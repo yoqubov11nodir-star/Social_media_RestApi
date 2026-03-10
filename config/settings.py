@@ -47,12 +47,6 @@ INSTALLED_APPS = [
 
 ]
 
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
-}
-
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -144,3 +138,21 @@ MEDIA_ROOT = 'media'
 
 EMAIL_EXPIRATION_TIME = 3
 PHONE_EXPIRATION_TIME = 2
+
+REST_FRAMEWORK = {'DEFAULT_AUTHENTICATION_CLASSES':[
+        'rest_framework_simplejwt.authentication.JWTAuthentication'
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ]
+}
+
+AUTH_USER_MODEL = 'users.CustomUser'
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'yoqubov11nodir@gmail.com'
+EMAIL_HOST_PASSWORD = 'lcyxlpqpdjnqhmaw'
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER

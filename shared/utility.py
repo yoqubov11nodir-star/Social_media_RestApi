@@ -12,7 +12,6 @@ def check_email_or_phone(user_input):
         data = 'email'
     else:
         response = {
-            'status': status.HTTP_400_BAD_REQUEST,
             'message': 'Email yoki telefon raqam xato kiritilgan'
         }
         raise ValidationError(response)
