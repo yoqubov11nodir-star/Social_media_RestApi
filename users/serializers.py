@@ -21,7 +21,7 @@ class SignupSerialzier(serializers.ModelSerializer):
         fields = ['id', 'auth_status', 'auth_type']
 
     def create(self, validated_data):
-        user_input = self.initial_data.get('email_or_phone') # To'g'ri manbadan olish
+        user_input = self.initial_data.get('email_or_phone')
         data = self.auth_validate(user_input)
         
         user = CustomUser.objects.create_user(**data)
@@ -39,7 +39,7 @@ class SignupSerialzier(serializers.ModelSerializer):
             code = user.generate_code(VIA_PHONE)
             print(f"SMS code for {user.phone_number}: {code}")
 
-        return user # user.save() olib tashlandi
+        return user
 
     def validate(self, attrs):
         user_input = self.initial_data.get('email_or_phone')
@@ -48,7 +48,7 @@ class SignupSerialzier(serializers.ModelSerializer):
         return attrs
 
     @staticmethod
-    def auth_validate(user_input): # Parametr nomi o'zgartirildi
+    def auth_validate(user_input):
         user_input_type = check_email_or_phone(user_input)
         if user_input_type == 'phone':
             return {'auth_type': VIA_PHONE, 'phone_number': user_input}
