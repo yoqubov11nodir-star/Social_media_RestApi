@@ -1,5 +1,5 @@
 from rest_framework import serializers, status
-from .models import CodeVerifiy, CustomUser, VIA_EMAIL, VIA_PHONE, CODE_VERIFIY, DONE, PHOTO_DONE
+from .models import CodeVerifiy, CustomUser, VIA_EMAIL, VIA_PHONE, CODE_VERIFIY, DONE, PHOTO_DONE, Post, Comment, Like, Follow, Story, CustomUser
 from rest_framework.exceptions import ValidationError
 from shared.utility import check_email_or_phone, check_email_or_phone_or_username
 from django.db.models import Q
@@ -12,8 +12,8 @@ class SignupSerialzier(serializers.ModelSerializer):
     auth_status = serializers.CharField(read_only=True)
     auth_type = serializers.CharField(read_only=True)
 
-    def __init__(self, instance=None, data=..., **kwargs):
-        super().__init__(instance, data, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.fields['email_or_phone'] = serializers.CharField(write_only=True, required=True)
 
     class Meta:
@@ -21,8 +21,7 @@ class SignupSerialzier(serializers.ModelSerializer):
         fields = ['id', 'auth_status', 'auth_type']
 
     def create(self, validated_data):
-      
-        user_input = self.context['request'].data.get('email_or_phone')
+        user_input = self.initial_data.get('email_or_phone') # To'g'ri manbadan olish
         data = self.auth_validate(user_input)
         
         user = CustomUser.objects.create_user(**data)
@@ -40,36 +39,22 @@ class SignupSerialzier(serializers.ModelSerializer):
             code = user.generate_code(VIA_PHONE)
             print(f"SMS code for {user.phone_number}: {code}")
 
-        user.save()
-        return user
+        return user # user.save() olib tashlandi
 
     def validate(self, attrs):
-        user_input = self.context['request'].data.get('email_or_phone')
+        user_input = self.initial_data.get('email_or_phone')
         self.auth_validate(user_input)
         self.validate_email_or_phone(user_input)
         return attrs
 
     @staticmethod
-    def auth_validate(data):
-        user_input = data.get('email_or_phone')
+    def auth_validate(user_input): # Parametr nomi o'zgartirildi
         user_input_type = check_email_or_phone(user_input)
         if user_input_type == 'phone':
             return {'auth_type': VIA_PHONE, 'phone_number': user_input}
         elif user_input_type == 'email':
             return {'auth_type': VIA_EMAIL, 'email': user_input}
-        return None
-
-    def validate_email_or_phone(self, email_or_phone):
-        if CustomUser.objects.filter(Q(phone_number=email_or_phone) | Q(email=email_or_phone)).exists():
-            raise ValidationError(detail="Bu email yoki telefon raqam bilan oldin ro'yxatdan o'tilgan.")
-        return email_or_phone
-        
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        data['message'] = 'Kodingiz yuborildi'
-        data['refresh'] = instance.token()['refresh']
-        data['access'] = instance.token()['access']
-        return data
+        raise ValidationError("Email yoki telefon raqami noto'g'ri.")
     
 class UserChangeInfoSerializer(serializers.Serializer):
     first_name = serializers.CharField(required=True)
@@ -84,25 +69,20 @@ class UserChangeInfoSerializer(serializers.Serializer):
     def validate_username(self, value):
         if not value.isalnum() and '_' not in value:
             raise ValidationError("Username faqat harf, raqam va pastki chiziqdan iborat bo'lishi kerak.")
-        
         if len(value) < 5:
             raise ValidationError("Username kamida 5 ta belgidan iborat bo'lishi kerak.")
-
         if CustomUser.objects.filter(username=value).exists():
             raise ValidationError("Bu username band. Iltimos, boshqasini tanlang.")
-        
         return value
 
     def validate_first_name(self, value):
         if any(char.isdigit() for char in value):
             raise ValidationError("Ismda raqamlar ishlatilishi mumkin emas.")
-        
         return value.strip()
 
     def validate_last_name(self, value):
         if any(char.isdigit() for char in value):
             raise ValidationError("Familiyada raqamlar ishlatilishi mumkin emas.")
-        
         return value.strip()
 
     def update(self, instance, validated_data):
@@ -112,11 +92,10 @@ class UserChangeInfoSerializer(serializers.Serializer):
         instance.first_name = validated_data.get('first_name')
         instance.last_name = validated_data.get('last_name')
         instance.username = validated_data.get('username')
-        instance.password.set_password(validated_data.get('password'))
+        instance.set_password(validated_data.get('password'))
 
         instance.auth_status = DONE
         instance.save()
-
         return instance
     
 class PhotoStatusSerializer(serializers.Serializer):
@@ -127,7 +106,7 @@ class PhotoStatusSerializer(serializers.Serializer):
         if photo:
             instance.photo = photo
         if instance.auth_status == DONE:
-            instance.auth_status == PHOTO_DONE
+            instance.auth_status = PHOTO_DONE
         instance.save()
 
         return instance
@@ -138,7 +117,7 @@ class LoginSerializer(TokenObtainPairSerializer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['user_input'] = serializers.CharField(required=True, write_only=True)
-        self.field['username'] = serializers.CharField(read_only=True)
+        self.fields['username'] = serializers.CharField(read_only=True)
 
     def validate(self, attrs):
         user = self.check_user_type(attrs)
@@ -174,8 +153,8 @@ class LoginSerializer(TokenObtainPairSerializer):
             self.username_field: username
             }
         
-        if user.auth_stauts in [DONE, PHOTO_DONE]:
-            raise ValidationError(detail="Siz hali to'liq ro'yhatdan o'tmadingiz")
+        if user.auth_status not in [DONE, PHOTO_DONE]:
+            raise ValidationError(detail="Siz hali to'liq ro'yxatdan o'tmadingiz")
 
         user = authenticate(**authentication_kwargs)
 
@@ -227,3 +206,94 @@ class ResetPasswordSerializer(serializers.Serializer):
         instance.set_password(validated_data.get('password'))
         instance.save()
         return instance
+    
+
+
+    
+class PostSerializer(serializers.ModelSerializer):
+    author = serializers.CharField(source='author.username', read_only=True)
+    likes_count = serializers.SerializerMethodField()
+    comments_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Post
+        fields = ['id', 'author', 'title', 'desc', 'image', 'likes_count', 'comments_count', 'created_at']
+
+    def get_likes_count(self, obj):
+        return obj.likes.count()
+
+    def get_comments_count(self, obj):
+        return obj.comments.count()
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    author = serializers.CharField(source='author.username', read_only=True)
+    replies = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Comment
+        fields = ['id', 'post', 'author', 'text', 'parent', 'replies', 'created_at']
+
+    def get_replies(self, obj):
+        if obj.replies.exists():
+            return CommentSerializer(obj.replies.all(), many=True).data
+        return []
+
+
+class LikeSerializer(serializers.ModelSerializer):
+    user = serializers.CharField(source='user.username', read_only=True)
+
+    class Meta:
+        model = Like
+        fields = ['id', 'user', 'post', 'comment']
+
+    def validate(self, attrs):
+        post = attrs.get('post')
+        comment = attrs.get('comment')
+        
+        if post and comment:
+            raise serializers.ValidationError("Faqat bitta obyektga (Post yoki Comment) like bosa olasiz")
+        if not post and not comment:
+            raise serializers.ValidationError("Like bosish uchun Post yoki Comment tanlang.")
+        
+        return attrs
+
+
+class FollowSerializer(serializers.ModelSerializer):
+    follower = serializers.CharField(source='follower.username', read_only=True)
+    following_name = serializers.CharField(source='following.username', read_only=True)
+
+    class Meta:
+        model = Follow
+        fields = ['id', 'follower', 'following', 'following_name', 'created_at']
+
+
+class StorySerializer(serializers.ModelSerializer):
+    author = serializers.CharField(source='author.username', read_only=True)
+
+    class Meta:
+        model = Story
+        fields = ['id', 'author', 'image', 'video', 'text', 'expiration_time', 'created_at']
+        extra_kwargs = {'expiration_time': {'required': False}}
+
+class ProfileSerializer(serializers.ModelSerializer):
+    posts_count = serializers.SerializerMethodField()
+    followers_count = serializers.SerializerMethodField()
+    following_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CustomUser
+        fields = [
+            'id', 'username', 'first_name', 'last_name', 
+            'email', 'phone_number', 'photo', 'user_role',
+            'posts_count', 'followers_count', 'following_count'
+        ]
+
+    def get_posts_count(self, obj):
+        return obj.posts.count()
+
+    def get_followers_count(self, obj):
+        return obj.followers.count()
+
+    def get_following_count(self, obj):
+        return obj.following.count()

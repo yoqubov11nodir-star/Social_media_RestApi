@@ -9,7 +9,8 @@ import uuid
 import random
 
 ORDINARY_USER, ADMIN, MANAGER = ('ordinary_user', 'admin', 'manager')
-NEW, CODE_VERIFIY, DONE, PHOTO_DONE = ('new', 'code_verifiy', 'done', 'photo_done')
+NEW, CODE_VERIFIY, DONE, PHOTO_DONE, POST, PROFILE, COMMENT, LIKE, FOLLOW, STORY = ('new', 'code_verifiy', 'done', 'photo_done', 
+'post', 'profile', 'comment', 'like', 'follow', 'story')
 VIA_EMAIL, VIA_PHONE = ('via_email', 'via_phone')
 
 class CustomUser(AbstractUser, BaseModel):
@@ -23,6 +24,12 @@ class CustomUser(AbstractUser, BaseModel):
         (CODE_VERIFIY, CODE_VERIFIY),
         (DONE, DONE),
         (PHOTO_DONE, PHOTO_DONE),
+        (POST, POST),
+        (PROFILE, PROFILE),
+        (COMMENT, COMMENT),
+        (LIKE, LIKE),
+        (FOLLOW, FOLLOW),
+        (STORY, STORY)
     )
     USER_AUTH_TYPE = (
         (VIA_EMAIL, VIA_EMAIL),
@@ -109,3 +116,57 @@ class CodeVerifiy(BaseModel):
     def __str__(self):
         return f'{self.user.username} | {self.code}'
     
+# =======================================================
+class Post(BaseModel):
+    title = models.CharField(max_length=255)
+    desc = models.TextField()
+    image = models.ImageField(upload_to='post_images/', validators=[FileExtensionValidator(allowed_extensions=['png', 'jpg', 'jpeg'])])
+    author = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='posts')
+
+    def __str__(self):
+        return f"{self.author.username} post: {self.title[:20]}"
+
+
+class Comment(BaseModel):
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')
+    author = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='comments')
+    text = models.TextField()
+    parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='replies')
+
+    def __str__(self):
+        return f"{self.author.username} comment on {self.post.id}"
+
+
+class Like(BaseModel):
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, null=True, blank=True, related_name='likes')
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE, null=True, blank=True, related_name='likes')
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='likes')
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'post'], name='unique_post_like', condition=models.Q(post__isnull=False)),
+            models.UniqueConstraint(fields=['user', 'comment'], name='unique_comment_like', condition=models.Q(comment__isnull=False)),
+        ]
+
+
+class Follow(BaseModel):
+    follower = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='following')
+    following = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='followers')
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['follower', 'following'], name='unique_followers')
+        ]
+
+
+class Story(BaseModel):
+    author = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='stories')
+    image = models.ImageField(upload_to='stories/', null=True, blank=True)
+    video = models.FileField(upload_to='stories/', null=True, blank=True)
+    text = models.TextField(null=True, blank=True)
+    expiration_time = models.DateTimeField()
+
+    def save(self, *args, **kwargs):
+        if not self.expiration_time:
+            self.expiration_time = datetime.now() + timedelta(days=1) # 24 soatdan keyin o'chadi
+        super().save(*args, **kwargs)
