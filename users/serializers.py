@@ -16,6 +16,7 @@ class SignupSerialzier(serializers.ModelSerializer):
         super().__init__(*args, **kwargs)
         self.fields['email_or_phone'] = serializers.CharField(write_only=True, required=True)
 
+
     class Meta:
         model = CustomUser
         fields = ['id', 'auth_status', 'auth_type']
@@ -56,6 +57,7 @@ class SignupSerialzier(serializers.ModelSerializer):
             return {'auth_type': VIA_EMAIL, 'email': user_input}
         raise ValidationError("Email yoki telefon raqami noto'g'ri.")
     
+
 class UserChangeInfoSerializer(serializers.Serializer):
     first_name = serializers.CharField(required=True)
     last_name = serializers.CharField(required=True)
@@ -98,6 +100,7 @@ class UserChangeInfoSerializer(serializers.Serializer):
         instance.save()
         return instance
     
+
 class PhotoStatusSerializer(serializers.Serializer):
     photo = serializers.ImageField()
 
@@ -111,6 +114,7 @@ class PhotoStatusSerializer(serializers.Serializer):
 
         return instance
     
+
 class LoginSerializer(TokenObtainPairSerializer):
     password = serializers.CharField(required=True, write_only=True)
 
@@ -169,6 +173,7 @@ class LoginSerializer(TokenObtainPairSerializer):
         
         return True
     
+
 class ForgotPasswordSerializer(serializers.Serializer):
     user_input = serializers.CharField(required=True, write_only=True)
 
@@ -207,13 +212,12 @@ class ResetPasswordSerializer(serializers.Serializer):
         instance.save()
         return instance
     
-
-
     
 class PostSerializer(serializers.ModelSerializer):
     author = serializers.CharField(source='author.username', read_only=True)
     likes_count = serializers.SerializerMethodField()
     comments_count = serializers.SerializerMethodField()
+
 
     class Meta:
         model = Post
@@ -230,6 +234,7 @@ class CommentSerializer(serializers.ModelSerializer):
     author = serializers.CharField(source='author.username', read_only=True)
     replies = serializers.SerializerMethodField()
 
+
     class Meta:
         model = Comment
         fields = ['id', 'post', 'author', 'text', 'parent', 'replies', 'created_at']
@@ -242,6 +247,7 @@ class CommentSerializer(serializers.ModelSerializer):
 
 class LikeSerializer(serializers.ModelSerializer):
     user = serializers.CharField(source='user.username', read_only=True)
+
 
     class Meta:
         model = Like
@@ -263,6 +269,7 @@ class FollowSerializer(serializers.ModelSerializer):
     follower = serializers.CharField(source='follower.username', read_only=True)
     following_name = serializers.CharField(source='following.username', read_only=True)
 
+
     class Meta:
         model = Follow
         fields = ['id', 'follower', 'following', 'following_name', 'created_at']
@@ -275,6 +282,7 @@ class StorySerializer(serializers.ModelSerializer):
         model = Story
         fields = ['id', 'author', 'image', 'video', 'text', 'expiration_time', 'created_at']
         extra_kwargs = {'expiration_time': {'required': False}}
+
 
 class ProfileSerializer(serializers.ModelSerializer):
     posts_count = serializers.SerializerMethodField()
@@ -297,3 +305,4 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     def get_following_count(self, obj):
         return obj.following.count()
+    

@@ -18,6 +18,7 @@ class SignUpView(CreateAPIView):
     serializer_class = SignupSerialzier
     queryset = CustomUser.objects.all()
 
+
 class CodeVerify(APIView):
     permission_classes = (permissions.IsAuthenticated, )
 
@@ -42,6 +43,7 @@ class CodeVerify(APIView):
             "refresh": user.token()['refresh']
         }
         return Response(response_data)
+
 
 class GetNewCode(APIView):
     permission_classes = (permissions.IsAuthenticated, )
@@ -71,6 +73,7 @@ class GetNewCode(APIView):
             "status": status.HTTP_201_CREATED,
         })
     
+    
 class UserChangeInfoView(APIView):
     permission_classes = (permissions.IsAuthenticated, )
 
@@ -86,6 +89,7 @@ class UserChangeInfoView(APIView):
             "access": user.token()['access'],
             "refresh": user.token()['refresh']
         })
+    
     
 class UserPhotoStatusView(APIView):
     permission_classes = (permissions.IsAuthenticated, ) 
@@ -103,8 +107,10 @@ class UserPhotoStatusView(APIView):
             "refresh": user.token()['refresh']
         })
     
+    
 class LoginView(TokenObtainPairView):
     serializer_class = LoginSerializer
+
 
 class LogoutView(APIView):
     permission_classes = (permissions.IsAuthenticated, )
@@ -122,6 +128,7 @@ class LogoutView(APIView):
         except Exception as e:
             raise ValidationError(detail=f'Xatolik: {e}')
         
+
 class LoginRefresh(APIView):
     permission_classes = (permissions.AllowAny, )
 
@@ -137,6 +144,7 @@ class LoginRefresh(APIView):
         except Exception as e:
             raise ValidationError(detail=f'Xatolik: {e}')
         
+
 class ForgotPasswordView(APIView):
     permission_classes = (permissions.AllowAny, )
 
@@ -147,6 +155,7 @@ class ForgotPasswordView(APIView):
             "status": True,
             "message": "Tasdiqlash kodi yuborildi.",
         }, status=status.HTTP_200_OK)
+
 
 class ResetPasswordView(UpdateAPIView):
     serializer_class = ResetPasswordSerializer
@@ -174,6 +183,7 @@ class ResetPasswordView(UpdateAPIView):
             'refresh': user.token()['refresh']
         }, status=status.HTTP_200_OK)
 
+
 class PostListCreateAPIView(APIView):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
@@ -189,6 +199,7 @@ class PostListCreateAPIView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 class CommentListCreateAPIView(APIView):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
@@ -203,6 +214,7 @@ class CommentListCreateAPIView(APIView):
             serializer.save(author=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class LikeToggleAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -222,6 +234,7 @@ class LikeToggleAPIView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 class FollowAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -233,6 +246,7 @@ class FollowAPIView(APIView):
             serializer.save(follower=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class StoryListCreateAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -250,6 +264,7 @@ class StoryListCreateAPIView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+
 class ProfileView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -263,3 +278,4 @@ class ProfileView(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
