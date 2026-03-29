@@ -53,6 +53,15 @@ class SignupSerialzier(serializers.ModelSerializer):
             print(f"SMS code for {user.phone_number}: {code}")
 
         return user
+    
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+    
+        tokens = instance.token() 
+    
+        data.update(tokens) 
+    
+        return data
 
     @staticmethod
     def auth_validate(user_input):
@@ -66,7 +75,7 @@ class SignupSerialzier(serializers.ModelSerializer):
             "message": "Email yoki telefon raqami noto'g'ri."
         })
     
-    
+
 class UserChangeInfoSerializer(serializers.Serializer):
     first_name = serializers.CharField(required=True)
     last_name = serializers.CharField(required=True)
