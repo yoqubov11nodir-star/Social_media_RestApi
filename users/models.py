@@ -80,7 +80,7 @@ class CustomUser(AbstractUser, BaseModel):
         CodeVerifiy.objects.create(
             code=code,
             user=self,
-            verify_type=verify_type
+            verifiy_type=verify_type # 
         )
         return code
 
@@ -168,5 +168,5 @@ class Story(BaseModel):
 
     def save(self, *args, **kwargs):
         if not self.expiration_time:
-            self.expiration_time = datetime.now() + timedelta(days=1) # 24 soatdan keyin o'chadi
+            self.expiration_time = datetime.now() + timedelta(days=1)
         super().save(*args, **kwargs)

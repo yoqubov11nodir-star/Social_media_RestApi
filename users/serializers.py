@@ -7,6 +7,12 @@ from django.core.mail import send_mail
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import authenticate
 
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+from django.core.mail import send_mail
+from .models import CustomUser, VIA_EMAIL, VIA_PHONE
+from shared.utility import check_email_or_phone
+
 class SignupSerialzier(serializers.ModelSerializer):
     id = serializers.UUIDField(read_only=True)
     auth_status = serializers.CharField(read_only=True)
@@ -16,14 +22,20 @@ class SignupSerialzier(serializers.ModelSerializer):
         super().__init__(*args, **kwargs)
         self.fields['email_or_phone'] = serializers.CharField(write_only=True, required=True)
 
-
     class Meta:
         model = CustomUser
         fields = ['id', 'auth_status', 'auth_type']
 
+    def validate(self, attrs):
+        user_input = attrs.get('email_or_phone')
+        SignupSerialzier.auth_validate(user_input)
+        return attrs
+
     def create(self, validated_data):
-        user_input = self.initial_data.get('email_or_phone')
+        user_input = validated_data.get('email_or_phone')
         data = self.auth_validate(user_input)
+        
+        data['username'] = user_input
         
         user = CustomUser.objects.create_user(**data)
         
@@ -42,12 +54,6 @@ class SignupSerialzier(serializers.ModelSerializer):
 
         return user
 
-    def validate(self, attrs):
-        user_input = self.initial_data.get('email_or_phone')
-        self.auth_validate(user_input)
-        self.validate_email_or_phone(user_input)
-        return attrs
-
     @staticmethod
     def auth_validate(user_input):
         user_input_type = check_email_or_phone(user_input)
@@ -55,9 +61,12 @@ class SignupSerialzier(serializers.ModelSerializer):
             return {'auth_type': VIA_PHONE, 'phone_number': user_input}
         elif user_input_type == 'email':
             return {'auth_type': VIA_EMAIL, 'email': user_input}
-        raise ValidationError("Email yoki telefon raqami noto'g'ri.")
+        raise ValidationError({
+            "success": False,
+            "message": "Email yoki telefon raqami noto'g'ri."
+        })
     
-
+    
 class UserChangeInfoSerializer(serializers.Serializer):
     first_name = serializers.CharField(required=True)
     last_name = serializers.CharField(required=True)
