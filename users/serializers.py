@@ -116,62 +116,50 @@ class PhotoStatusSerializer(serializers.Serializer):
     
 
 class LoginSerializer(TokenObtainPairSerializer):
-    password = serializers.CharField(required=True, write_only=True)
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['user_input'] = serializers.CharField(required=True, write_only=True)
-        self.fields['username'] = serializers.CharField(read_only=True)
+        self.fields['password'] = serializers.CharField(required=True, write_only=True)
+        if 'username' in self.fields:
+            self.fields['username'].required = False
 
     def validate(self, attrs):
         user = self.check_user_type(attrs)
-        response_data = {
+        full_token = user.token()
+        return {
             'status': status.HTTP_200_OK,
-            'meassage': "Siz tizimga kirdingiz",
-            'access': user.token()['access'],
-            'refresh': user.token()['refresh']
+            'message': "Siz tizimga kirdingiz",
+            'access': full_token['access'],
+            'refresh': full_token['refresh'],
+            'username': user.username
         }
-        return response_data
 
     def check_user_type(self, data):
+        user_input = data.get('user_input')
         password = data.get('password')
-        user_input_data = data.get('user_input')
-        user_type = check_email_or_phone_or_username(data.get('user_input'))
+        user_type = check_email_or_phone_or_username(user_input)
+
         if user_type == 'username':
-            user = CustomUser.objects.filter(username=user_input_data).first()
-            self.get_object(user)
-            username = user_input_data
+            user = CustomUser.objects.filter(username=user_input).first()
         elif user_type == 'email':
-            user = CustomUser.objects.filter(email__icontains=user_input_data.lower()).first()
-            self.get_object(user)
-            username = user.username
-
+            user = CustomUser.objects.filter(email__iexact=user_input).first()
         elif user_type == 'phone':
-            user = CustomUser.objects.filter(phone_number=user_input_data).first()
-            self.get_object(user)
+            user = CustomUser.objects.filter(phone_number=user_input).first()
         else:
-            raise ValidationError(detail="Ma'lumot topilmadi")
-        
-        authentication_kwargs = {
-            "password": password,
-            self.username_field: username
-            }
-        
+            raise ValidationError("Ma'lumot topilmadi")
+
+        if not user:
+            raise ValidationError({"message": "Login xato kiritildi", "status": status.HTTP_400_BAD_REQUEST})
+
         if user.auth_status not in [DONE, PHOTO_DONE]:
-            raise ValidationError(detail="Siz hali to'liq ro'yxatdan o'tmadingiz")
+            raise ValidationError("Siz hali to'liq ro'yxatdan o'tmadingiz")
 
-        user = authenticate(**authentication_kwargs)
+        authenticated_user = authenticate(username=user.username, password=password)
 
-        if not user:
-            raise ValidationError('Parol xato')
-        
-        return user
+        if not authenticated_user:
+            raise ValidationError("Parol xato")
 
-    def get_object(self, user):
-        if not user:
-            raise ValidationError({"meassage": "Login xato kiritdingiz", 'status': status.HTTP_400_BAD_REQUEST})
-        
-        return True
+        return authenticated_user
     
 
 class ForgotPasswordSerializer(serializers.Serializer):
