@@ -1,0 +1,30 @@
+# Python kesh fayllari
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Muhit (Virtual Environment)
+.venv/
+venv/
+ENV/
+env/
+
+# Maxfiy ma'lumotlar (Buni aslo yuklama!)
+.env
+db.sqlite3
+
+# Django static va media fayllari
+static/
+media/
+staticfiles/
+
+# IDE sozlamalari (VS Code, PyCharm)
+.vscode/
+.idea/
+
+# Log fayllar
+*.log
+
+# OS xususiy fayllari
+.DS_Store
+Thumbs.db
